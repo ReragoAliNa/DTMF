@@ -355,30 +355,47 @@ FPGA 系统采用纯 VHDL 语言编写，采用模块化设计，主要包含以
     \end{tabular}
 \end{table}
 
-\subsection{验证与综合}
-项目在 Xilinx ISE 14.7 环境下完成综合与实现。
+\subsection{综合结果}
+项目在 Xilinx ISE 14.7 环境下完成综合与实现。图 \ref{fig:rtl_schematic} 展示了综合后的 RTL 顶层电路结构，图 \ref{fig:resource} 展示了布局布线后的资源占用情况。
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{fpga/fpga_rtl1.png}
-    \caption{FPGA 硬件实现细节：综合电路图}
+    \caption{FPGA 综合电路图 (RTL Schematic)}
+    \label{fig:rtl_schematic}
 \end{figure}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{fpga/fpga_rtl2.png}
-    \caption{FPGA 硬件实现细节：仿真波形与资源占用}
+    \caption{FPGA 资源占用与时序报告}
+    \label{fig:resource}
 \end{figure}
+
+\subsection{仿真验证}
+为了验证 DDS 逻辑的正确性，我们使用 GHDL 进行了 RTL 级仿真，并使用 GTKWave 观察波形（如图 \ref{fig:gtkwave} 所示）。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fpga/gtkwave_simulation.png}
+    \caption{GHDL + GTKWave 仿真波形：DDS 核心逻辑验证}
+    \label{fig:gtkwave}
+\end{figure}
+
+从波形图中可以清晰地观察到 DDS 技术的核心原理：
+\begin{itemize}
+    \item \textbf{相位累加 (锯齿波)}: 图中绿色的锯齿状波形（signal \texttt{addr}）代表相位累加器的高 8 位。它从 0 线性增加到 255 并循环溢出，模拟了对正弦波完整周期 ($0 \sim 2\pi$) 的扫描。由于行频和列频不同，上下两组锯齿波的周期（斜率）存在明显差异，上方波形更为密集，分别对应高频（列）和低频（行）信号。
+    \item \textbf{波形查找 (正弦波)}: 曲线波形（signal \texttt{data}）是根据地址从查找表 (ROM) 中读取的正弦幅度值。每个锯齿波周期严格对应一个完整的正弦波周期，验证了相位到幅度的映射逻辑完全正确，即 $ \text{Output} = \sin(\text{Addr}) $。
+\end{itemize}
+
+\subsection{硬件测试}
+将比特流下载至 AX309 开发板，实际连接效果如图 \ref{fig:board} 所示。
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\textwidth]{fpga/fpga_board.png}
     \caption{FPGA 开发板实物连接与测试环境}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.95\textwidth]{fpga/gtkwave_simulation.png}
-    \caption{GHDL + GTKWave 仿真波形：展示了 DDS 查表与正弦波合成细节}
+    \label{fig:board}
 \end{figure}
 
 \section{附录：项目源代码}
