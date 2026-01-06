@@ -355,21 +355,14 @@ FPGA 系统采用纯 VHDL 语言编写，采用模块化设计，主要包含以
     \end{tabular}
 \end{table}
 
-\subsection{综合结果}
-项目在 Xilinx ISE 14.7 环境下完成综合与实现。图 \ref{fig:rtl_schematic} 展示了综合后的 RTL 顶层电路结构，图 \ref{fig:resource} 展示了布局布线后的资源占用情况。
+\subsection{硬件测试环境}
+将比特流下载至 AX309 开发板，实际连接效果如图 \ref{fig:board} 所示。
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{fpga/fpga_rtl1.png}
-    \caption{FPGA 综合电路图 (RTL Schematic)}
-    \label{fig:rtl_schematic}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.95\textwidth]{fpga/fpga_rtl2.png}
-    \caption{FPGA 资源占用与时序报告}
-    \label{fig:resource}
+    \includegraphics[width=0.8\textwidth]{fpga/fpga_board.png}
+    \caption{FPGA 开发板实物连接与测试环境}
+    \label{fig:board}
 \end{figure}
 
 \subsection{仿真验证}
@@ -388,22 +381,26 @@ FPGA 系统采用纯 VHDL 语言编写，采用模块化设计，主要包含以
     \item \textbf{波形查找 (正弦波)}: 曲线波形（signal \texttt{data}）是根据地址从查找表 (ROM) 中读取的正弦幅度值。每个锯齿波周期严格对应一个完整的正弦波周期，验证了相位到幅度的映射逻辑完全正确，即 $ \text{Output} = \sin(\text{Addr}) $。
 \end{itemize}
 
-\subsection{硬件测试}
-将比特流下载至 AX309 开发板，实际连接效果如图 \ref{fig:board} 所示。
+\subsection{综合结果}
+项目在 Xilinx ISE 14.7 环境下完成综合与实现。图 \ref{fig:rtl_schematic} 展示了综合后的 RTL 顶层电路结构，图 \ref{fig:resource} 展示了布局布线后的资源占用情况。
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{fpga/fpga_board.png}
-    \caption{FPGA 开发板实物连接与测试环境}
-    \label{fig:board}
+    \includegraphics[width=0.95\textwidth]{fpga/fpga_rtl1.png}
+    \caption{FPGA 综合电路图 (RTL Schematic)}
+    \label{fig:rtl_schematic}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fpga/fpga_rtl2.png}
+    \caption{FPGA 资源占用与时序报告}
+    \label{fig:resource}
 \end{figure}
 
 \section{附录：项目源代码}
 
-由于篇幅限制，本文档仅列出核心算法的关键实现片段。完整项目（包含 Java Web 后端、前端资源、Python 仿真及 FPGA 工程）已开源。
-
-\textbf{开源仓库地址}：\url{https://github.com/ReragoAliNa/DTMF}
-
+由于篇幅限制，仅列出核心算法的关键实现片段。
 \subsection{Python 核心算法实现 (Goertzel)}
 \lstinputlisting[caption={src/core/dsp.py (部分截取)}, language=Python, firstline=1, lastline=45]{../../src/core/dsp.py}
 
