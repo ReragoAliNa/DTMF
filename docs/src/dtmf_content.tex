@@ -1,76 +1,71 @@
 \section{设计内容与要求}
 
 \subsection{设计内容}
-本课程设计的主要目标是利用数字信号处理技术实现双音多频（DTMF）信号的合成及其在复杂噪声环境下的自动识别。具体内容包括：
+本课程设计旨在构建一个软硬结合的 DTMF 信号处理系统，涵盖信号的生成、传输模拟及接收检测。设计内容分为软件仿真与硬件实现两大部分：
+
 \begin{enumerate}
-    \item \textbf{DTMF 信号合成}：掌握 DTMF 信号的编码原则，利用 Python/Java 实现标准双频信号的生成，并具备相位连续性控制能力。
-    \item \textbf{核心算法实现}：基于 Goertzel 算法实现高效的频点能量检测，替代传统的 FFT 方法，以满足实时性要求。
-    \item \textbf{自适应抗噪策略研究}：针对低信噪比（SNR < 0dB）场景，研究并实现基于"动态积分时长"的自适应检测算法，解决传统固定窗口算法在即时性与准确性之间的矛盾。
-    \item \textbf{综合性能评估}：引入 ESC-50 真实环境噪声数据集（如雨声、风声、街道噪声），对比分析算法在非高斯、非平稳噪声下的鲁棒性。
-    \item \textbf{交互式系统开发}：构建基于 B/S 架构的交互式演示系统，实现信号产生的实时可视化、噪声注入及检测过程的动态展示。
+    \item \textbf{FPGA 硬件信号发生器}：
+    \begin{itemize}
+        \item 基于 Xilinx Spartan-6 FPGA (AX309) 平台。
+        \item 利用 DDS (直接数字频率合成) 技术实现高精度的 DTMF 双音信号生成。
+        \item 设计按键扫描与消抖逻辑，实现 0-9、*、\# 等 16 个标准 DTMF 按键的实时触发。
+        \item 实现 PWM (脉宽调制) 音频输出，驱动板载蜂鸣器或外部音箱。
+    \end{itemize}
+    
+    \item \textbf{软件仿真与检测系统}：
+    \begin{itemize}
+        \item 构建 Java Web 交互式平台，提供波形可视化、噪声注入及频谱分析功能。
+        \item 实现 Goertzel 算法进行高效的 DTMF 信号解码。
+        \item 研究低信噪比下的自适应检测策略，提升系统的抗噪鲁棒性。
+    \end{itemize}
 \end{enumerate}
 
 \subsection{设计要求}
 \begin{enumerate}
-    \item \textbf{指标要求}：在 SNR = -10dB 的高斯白噪声环境下，识别准确率需达到 95\% 以上；在 SNR = -20dB 的极端环境下，通过自适应策略仍能保持 80\% 以上的可用性。
-    \item \textbf{系统要求}：演示系统需具备"实验模式"（参数调优）、"电话模式"（场景仿真）和"分析模式"（离线处理）三种功能形态。
-    \item \textbf{分析要求}：深入分析 Goertzel 算法的频谱泄漏效应及相干累积增益原理，并绘制详细的性能对比曲线。
-    \item \textbf{工程要求}：代码需遵循模块化设计原则，实现 Python 算法原型与 Java 工程实现的逻辑统一。
+    \item \textbf{频率精度}：FPGA 生成的 DTMF 频率误差需小于 1.5\% (ITU-T 标准)。
+    \item \textbf{识别性能}：在 SNR = -10dB 的高斯白噪声环境下，软件识别准确率需达到 95\% 以上。
+    \item \textbf{实时性}：按键响应延迟需小于 100ms，检测算法在普通 PC 上能满足实时处理要求。
+    \item \textbf{工程规范}：硬件通过 RTL 仿真与板级验证，软件代码模块化且具备完整文档。
 \end{enumerate}
 
 \section{总体方案}
-本设计采用"合成—信道—自适应检测—交互"的闭环处理流程，总体架构如下：
-\begin{enumerate}
-    \item \textbf{信号产生层}：负责生成标准的 DTMF 信号。支持参数化控制频率偏移（模拟硬件老化）和相位初值。
-    \item \textbf{信道模拟层}：构建多样化的噪声信道模型。不仅支持标准 AWGN（加性高斯白噪声），还集成了 ESC-50 真实环境声库，模拟实际通话场景。
-    \item \textbf{自适应检测层（核心）}：
-    \begin{itemize}
-        \item \textbf{预判级}：使用 40ms 短窗口快速估算信噪比。
-        \item \textbf{决策级}：根据 $\Delta SNR = 10\log(T_2/T_1)$ 增益公式，动态计算所需的积分时长。
-        \item \textbf{执行级}：调用 Goertzel 算法在最佳时长下提取能量特征，结合峰值比判决输出结果。
-    \end{itemize}
-    \item \textbf{应用交互层}：通过 Java Spring Boot 构建 Web 服务，提供可视化的波形显示、频谱分析及实时音频回放功能。
-\end{enumerate}
+本设计采用"硬件生成—软件检测"的闭环验证架构，总体方案如图 \ref{fig:system_arch} 所示。
 
-\textbf{频率设计原理}：
-DTMF 的 8 个频率经过精心选择，旨在最大程度减少非线性失真带来的干扰：
 \begin{itemize}
-    \item \textbf{无谐波关系}：没有任何一个频率是其他频率的整数倍，防止谐波干扰。
-    \item \textbf{避免互调产物}：任意两个频率的线性组合（和频与差频）都不会落在 8 个标准频率附近，有效抵抗互调失真。
-    \item \textbf{避开工频}：所有频率均避开电力系统的 50Hz/60Hz 及其主要谐波。
+    \item \textbf{发送端 (FPGA 子系统)}：采用模块化设计，顶层模块 \texttt{ax309\_top} 协调各子模块工作。
+    \begin{itemize}
+        \item \textbf{输入模块}：对 4x4 矩阵键盘或独立按键进行消抖处理。
+        \item \textbf{DDS 核心}：\texttt{dtmf\_generator} 模块内建两个 32 位相位累加器，分别产生行频 ($f_L$) 和列频 ($f_H$)，查表后线性叠加。
+        \item \textbf{输出模块}：\texttt{pwm\_audio} 将 16 位数字波形转换为 PWM 脉冲流。
+    \end{itemize}
+    
+    \item \textbf{接收端 (PC 软件子系统)}：
+    \begin{itemize}
+        \item \textbf{前端}：HTML5/JS 实现用户交互与波形绘制。
+        \item \textbf{后端}：Java Spring Boot 处理业务逻辑与 Python 算法调用。
+        \item \textbf{算法核}：Python 实现 Goertzel 滤波器组与自适应判决逻辑。
+    \end{itemize}
 \end{itemize}
-
-\begin{table}[H]
-    \centering
-    \caption{DTMF 频率编码表 (CCITT 标准)}
-    \label{tab:dtmf_freq}
-    \begin{tabular}{|c|c|c|c|c|}
-    \hline
-    \textbf{Low / High} & \textbf{1209 Hz} & \textbf{1336 Hz} & \textbf{1477 Hz} & \textbf{1633 Hz} \\ \hline
-    \textbf{697 Hz} & 1 & 2 & 3 & A \\ \hline
-    \textbf{770 Hz} & 4 & 5 & 6 & B \\ \hline
-    \textbf{852 Hz} & 7 & 8 & 9 & C \\ \hline
-    \textbf{941 Hz} & * & 0 & \# & D \\ \hline
-    \end{tabular}
-\end{table}
 
 \section{方法原理}
 
 \subsection{DTMF 编码原理}
 DTMF（Dual-Tone Multi-Frequency）信号由一个低频分量和一个高频分量叠加而成。其数学表达式为：
 \[ x(t) = A_L \sin(2\pi f_L t) + A_H \sin(2\pi f_H t) \]
-其中 $f_L \in \{697, 770, 852, 941\}$ Hz，$f_H \in \{1209, 1336, 1477\}$ Hz。这种双音频设计可以有效防止单一频率信号（如语言声）导致的误触发。
+具体频率组合遵循 CCITT 标准（见表 \ref{tab:dtmf_freq}），这种双音频设计利用四个行频和四个列频的唯一组合，有效防止了单一频率信号（如人声谐波）导致的误触发。
 
-\subsection{Goertzel 算法}
-Goertzel 算法是一种二阶递归 IIR 滤波器形式的幅度估计算法，特别适用于检测已知频点。相比于通用的 FFT 算法，它在计算少量频点时效率更高。其差分方程为：
+\subsection{DDS 频率合成原理 (FPGA)}
+直接数字频率合成 (DDS) 是 FPGA 产生波形的核心技术。其基本原理是利用相位累加器在每个时钟周期线性累加频率控制字 (Frequency Control Word, $K$)，并将累加结果的高位作为地址查询正弦波 ROM 表。
+输出频率 $F_{out}$ 与系统时钟 $F_{clk}$ 及累加器位宽 $N$ 的关系为：
+\[ F_{out} = \frac{F_{clk} \times K}{2^N} \Rightarrow K = \frac{F_{out} \times 2^N}{F_{clk}} \]
+在本设计中，$F_{clk} = 50\text{MHz}$，$N=32$，可实现高达 $0.012\text{Hz}$ 的频率分辨率，远超 DTMF 精度要求。
+
+\subsection{Goertzel 检测算法 (软件)}
+Goertzel 算法是一种二阶递归 IIR 滤波器，专门用于计算信号在特定频点处的能量。相比于全频段 FFT，它在仅需检测 8 个已知频点时具有极高的计算效率。
+其递推公式为：
 \[ s[n] = x[n] + 2\cos\left(\frac{2\pi k}{N}\right)s[n-1] - s[n-2] \]
-检测的能量值为：
+能量计算公式为：
 \[ |X(k)|^2 = s[N]^2 + s[N-1]^2 - 2\cos\left(\frac{2\pi k}{N}\right)s[N]s[N-1] \]
-
-\subsection{性能评估指标}
-识别准确率 $P_{acc}$ 定义为：
-\[ P_{acc} = \frac{N_{correct}}{N_{total}} \times 100\% \]
-其中 $N_{correct}$ 为正确识别的次数，$N_{total}$ 为总测试样本数。
 
 \section{性能分析}
 
@@ -355,47 +350,44 @@ FPGA 系统采用纯 VHDL 语言编写，采用模块化设计，主要包含以
     \end{tabular}
 \end{table}
 
-\subsection{硬件测试环境}
-将比特流下载至 AX309 开发板，实际连接效果如图 \ref{fig:board} 所示。
+\section{FPGA 系统实现与验证}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{fpga/fpga_board.png}
-    \caption{FPGA 开发板实物连接与测试环境}
-    \label{fig:board}
-\end{figure}
+\section{FPGA 系统实现与验证}
 
-\subsection{仿真验证}
-为了验证 DDS 逻辑的正确性，我们使用 GHDL 进行了 RTL 级仿真，并使用 GTKWave 观察波形（如图 \ref{fig:gtkwave} 所示）。
+\subsection{逻辑设计与仿真 (Design Verification)}
+本设计采用自顶向下的设计方法。在将代码下载到 FPGA 之前，首先对核心的 DDS 信号生成模块进行了严格的 RTL 级仿真。
+图 \ref{fig:gtkwave} 展示了测试平台模拟按下数字键 \textbf{'1'} 时的 GHDL 仿真波形：
+\begin{itemize}
+    \item \textbf{绿色波形 (addr)}：代表相位累加器的输出。可以看到两种不同斜率的锯齿波，分别对应 697Hz (行频) 和 1209Hz (列频)。
+    \item \textbf{红色波形 (data)}：代表查表后的正弦波输出。仿真结果证明了双音信号的频率和相位关系完全准确。
+\end{itemize}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{fpga/gtkwave_simulation.png}
-    \caption{GHDL + GTKWave 仿真波形：DDS 核心逻辑验证}
+    \caption{GHDL 仿真波形：按键 '1' 的双音信号生成过程验证}
     \label{fig:gtkwave}
 \end{figure}
 
-从波形图中可以清晰地观察到 DDS 技术的核心原理：
-\begin{itemize}
-    \item \textbf{相位累加 (锯齿波)}: 图中绿色的锯齿状波形（signal \texttt{addr}）代表相位累加器的高 8 位。它从 0 线性增加到 255 并循环溢出，模拟了对正弦波完整周期 ($0 \sim 2\pi$) 的扫描。由于行频和列频不同，上下两组锯齿波的周期（斜率）存在明显差异，上方波形更为密集，分别对应高频（列）和低频（行）信号。
-    \item \textbf{波形查找 (正弦波)}: 曲线波形（signal \texttt{data}）是根据地址从查找表 (ROM) 中读取的正弦幅度值。每个锯齿波周期严格对应一个完整的正弦波周期，验证了相位到幅度的映射逻辑完全正确，即 $ \text{Output} = \sin(\text{Addr}) $。
-\end{itemize}
-
-\subsection{综合结果}
-项目在 Xilinx ISE 14.7 环境下完成综合与实现。图 \ref{fig:rtl_schematic} 展示了综合后的 RTL 顶层电路结构，图 \ref{fig:resource} 展示了布局布线后的资源占用情况。
+\subsection{工程构建与综合 (Project Implementation)}
+逻辑验证通过后，在 Xilinx ISE 14.7 环境下进行完整的工程构建。
+如图 \ref{fig:project_status} 所示，工程树中的 "Synthesize"（综合）、"Implement Design"（布局布线）以及 "Generate Programming File"（比特流生成）均显示为绿色对勾状态。这标志着设计已成功通过所有编译阶段，且满足时序约束，生成的 \texttt{.bit} 文件可用于物理下载。
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{fpga/fpga_rtl1.png}
-    \caption{FPGA 综合电路图 (RTL Schematic)}
-    \label{fig:rtl_schematic}
+    \includegraphics[width=0.95\textwidth]{fpga/ise_resource.png}
+    \caption{Xilinx ISE 工程全流程编译通过状态概览}
+    \label{fig:project_status}
 \end{figure}
 
+\subsection{板级硬件测试 (Hardware Test)}
+最后，将生成的比特流下载至 AX309 (Spartan-6) 开发板进行实测。测试环境如图 \ref{fig:board} 所示，通过示波器捕捉引脚输出，并驱动扬声器进行听觉验证。实验结果表明，按键触发灵敏，输出音调准确，达到了设计预期。
+
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{fpga/fpga_rtl2.png}
-    \caption{FPGA 资源占用与时序报告}
-    \label{fig:resource}
+    \includegraphics[width=0.8\textwidth]{fpga/fpga_board.png}
+    \caption{FPGA 开发板实物连接与测试现场}
+    \label{fig:board}
 \end{figure}
 
 \section{附录：项目源代码}
