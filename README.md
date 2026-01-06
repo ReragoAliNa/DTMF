@@ -109,4 +109,4 @@ Class-Design-Personal/
 2. **自适应增益**: 通过自适应调节窗口时长（40ms-1s），系统可成功将检测门限从 -15dB 扩展至 -25dB，实现了极低信噪比下的鲁棒解析。
 
 ---
-&copy; 2024 DTMF Signal Processing Course Design
+&copy; 2026 DTMF Signal Processing Course Design
