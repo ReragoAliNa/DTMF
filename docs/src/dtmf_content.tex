@@ -350,55 +350,52 @@ FPGA 系统采用纯 VHDL 语言编写，采用模块化设计，主要包含以
     \end{tabular}
 \end{table}
 
-\subsection{硬件测试环境}
-将比特流下载至 AX309 开发板，实际连接效果如图 \ref{fig:board} 所示。
+\section{FPGA 系统实现与验证}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{fpga/fpga_board.png}
-    \caption{FPGA 开发板实物连接与测试环境}
-    \label{fig:board}
-\end{figure}
-
-\subsection{仿真验证}
-为了验证 DDS 逻辑的正确性，我们使用 GHDL 进行了 RTL 级仿真，并使用 GTKWave 观察波形（如图 \ref{fig:gtkwave} 所示）。
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.95\textwidth]{fpga/gtkwave_simulation.png}
-    \caption{GHDL + GTKWave 仿真波形：DDS 核心逻辑验证}
-    \label{fig:gtkwave}
-\end{figure}
-
-从波形图中可以清晰地观察到 DDS 技术的核心原理：
-\begin{itemize}
-    \item \textbf{相位累加 (锯齿波)}: 图中绿色的锯齿状波形（signal \texttt{addr}）代表相位累加器的高 8 位。它从 0 线性增加到 255 并循环溢出，模拟了对正弦波完整周期 ($0 \sim 2\pi$) 的扫描。由于行频和列频不同，上下两组锯齿波的周期（斜率）存在明显差异，上方波形更为密集，分别对应高频（列）和低频（行）信号。
-    \item \textbf{波形查找 (正弦波)}: 曲线波形（signal \texttt{data}）是根据地址从查找表 (ROM) 中读取的正弦幅度值。每个锯齿波周期严格对应一个完整的正弦波周期，验证了相位到幅度的映射逻辑完全正确，即 $ \text{Output} = \sin(\text{Addr}) $。
-\end{itemize}
-
-\subsection{综合结果}
-项目在 Xilinx ISE 14.7 环境下完成综合与实现。
+\subsection{逻辑设计与仿真}
+本设计在 Xilinx ISE 14.7 环境下进行工程管理（如图 \ref{fig:ise_project}），并通过 RTL 级仿真验证了设计逻辑的正确性。
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{fpga/ise_project.png}
-    \caption{Xilinx ISE 工程概览}
+    \caption{Xilinx ISE 工程概览与模块层级}
     \label{fig:ise_project}
 \end{figure}
+
+图 \ref{fig:rtl_schematic} 展示了综合前的 RTL 原理图，清晰地反映了双路 DDS 相位累加器并行工作的电路结构。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fpga/ise_rtl.png}
+    \caption{RTL 原理图 (RTL Schematic)}
+    \label{fig:rtl_schematic}
+\end{figure}
+
+为了验证核心算法，我们使用 GHDL 进行了仿真。图 \ref{fig:gtkwave} 展示了模拟按下数字键 \textbf{'1'} 时的波形状态。
+\begin{enumerate}
+    \item \textbf{信号特征}：此时 \texttt{key\_idx}=1，系统同时生成 $697\text{Hz}$ (行频) 和 $1209\text{Hz}$ (列频) 的正弦波。
+    \item \textbf{相位累加}：图中上方较密的锯齿波对应 $1209\text{Hz}$ 高频分量，下方较疏的锯齿波对应 $697\text{Hz}$ 低频分量。
+    \item \textbf{查表输出}：\texttt{data} 信号展示了相位到幅度的正确映射，验证了 DDS 逻辑的正确性。
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fpga/gtkwave_simulation.png}
+    \caption{GHDL + GTKWave 仿真图：按键 '1' ($697\text{Hz} + 1209\text{Hz}$) 的生成过程}
+    \label{fig:gtkwave}
+\end{figure}
+
+\subsection{综合与时序分析}
+完成设计输入后，进行逻辑综合 (Synthesize)。
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{fpga/ise_synthesis.png}
-    \caption{综合 (Synthesize) 过程}
+    \caption{综合 (Synthesize) 过程报告}
     \label{fig:ise_synthesis}
 \end{figure}
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.95\textwidth]{fpga/ise_implement.png}
-    \caption{实现 (Implement Design) 过程}
-    \label{fig:ise_implement}
-\end{figure}
+资源占用报告（图 \ref{fig:resource}）显示，设计仅占用了极少的 Slice LUTs 和 Block RAM，适合低成本 FPGA 实现。时序报告（图 \ref{fig:timing}）表明设计完全满足 50MHz 时钟约束，无建立/保持时间违例。
 
 \begin{figure}[H]
     \centering
@@ -414,11 +411,23 @@ FPGA 系统采用纯 VHDL 语言编写，采用模块化设计，主要包含以
     \label{fig:timing}
 \end{figure}
 
+\subsection{物理实现与板级验证}
+最后进行布局布线 (Implement Design) 并生成比特流文件。
+
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{fpga/ise_rtl.png}
-    \caption{RTL 原理图 (RTL Schematic)}
-    \label{fig:rtl_schematic}
+    \includegraphics[width=0.95\textwidth]{fpga/ise_implement.png}
+    \caption{布局布线 (Implement Design) 成功状态}
+    \label{fig:ise_implement}
+\end{figure}
+
+将程序下载至 AX309 开发板（图 \ref{fig:board}），连接示波器和扬声器进行测试。实测按下按键可听到准确的双音多频声音，且可通过板载 LED 观察按键编码状态。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{fpga/fpga_board.png}
+    \caption{FPGA 开发板实物连接与测试环境}
+    \label{fig:board}
 \end{figure}
 
 \section{附录：项目源代码}
