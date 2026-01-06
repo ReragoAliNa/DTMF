@@ -322,6 +322,47 @@ Goertzel 算法本质上是一个\textbf{匹配滤波器}的高效实现。对�
 
 % ... (中间内容省略)
 
+\section{FPGA 硬件实现}
+本项目作为软硬件协同设计的尝试，在 Xilinx AX309 开发板 (Spartan-6 XC6SLX9) 上实现了基于 DDS (Direct Digital Synthesis) 技术的 DTMF 信号发生器。
+
+\subsection{硬件架构设计}
+FPGA 系统采用纯 VHDL 语言编写，采用模块化设计，主要包含以下核心模块：
+\begin{enumerate}
+    \item \textbf{DDS 信号发生器 (dtmf\_generator)}:
+    系统核心，包含两个并行的 32 位相位累加器。根据输入的按键索引，在查找表中分别读取行频 ($f_L$) 和列频 ($f_H$) 对应的正弦波样本，并进行线性叠加。
+    查找表 (LUT) 深度为 256 点，位宽 16 位，存储了一个完整周期的正弦波形。
+    \item \textbf{PWM 音频驱动 (pwm\_audio)}:
+    为了节省硬件成本，本设计不依赖外部 I2S 音频 DAC 芯片，而是采用 PWM (脉冲宽度调制) 技术。
+    将 16 位有符号 PCM 信号映射为 10 位无符号占空比，并通过 50MHz 时钟驱动，产生约 48.8kHz ($ \approx 50\text{MHz} / 2^{10} $) 的 PWM 载波。该信号可直接驱动无源蜂鸣器或通过简单的 RC 低通滤波器还原为模拟音频。
+    \item \textbf{按键消抖 (key\_debounce)}:
+    针对机械按键的抖动特性，设计了基于状态机的 20ms 延时消抖模块，确保按键触发的稳定性。
+\end{enumerate}
+
+\subsection{引脚分配与资源使用}
+根据 AX309 开发板原理图，关键外设引脚分配如下表所示：
+
+\begin{table}[H]
+    \centering
+    \caption{FPGA 引脚分配表 (AX309)}
+    \begin{tabular}{|l|c|l|}
+    \hline
+    \textbf{信号名} & \textbf{FPGA 引脚} & \textbf{说明} \\ \hline
+    sys\_clk & T8 & 50MHz 系统时钟 \\ \hline
+    rst\_n & L3 & 复位按键 (Active Low) \\ \hline
+    key\_in[0-3] & C3, D3, E4, E3 & 4 个用户机械按键 \\ \hline
+    led\_out[0-3] & P4, N5, P5, M6 & 4 个状态指示 LED \\ \hline
+    audio\_pwm & J11 & 板载无源蜂鸣器 \\ \hline
+    \end{tabular}
+\end{table}
+
+\subsection{验证与综合}
+项目在 Xilinx ISE 14.7 环境下完成综合与实现。
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../../fpga/waveform.png} % Placeholder, user needs to capture this
+    \caption{ISim 仿真波形：展示了按键触发后的相位累加与正弦波合成过程}
+\end{figure}
+
 \section{附录：完整源代码}
 
 \subsection{Python 核心算法}
@@ -342,6 +383,18 @@ Goertzel 算法本质上是一个\textbf{匹配滤波器}的高效实现。对�
 
 \newpage
 \lstinputlisting[caption={RESTful 控制器 (DtmfController.java)}, language=Java]{../../java-web/src/main/java/com/example/dtmf_web/controller/DtmfController.java}
+
+\subsection{FPGA VHDL 源码}
+
+\newpage
+\lstinputlisting[caption={顶层模块 (ax309\_top.vhd)}, language=VHDL]{../../fpga/ax309_top.vhd}
+
+\newpage
+\lstinputlisting[caption={DTMF 发生器 (dtmf\_generator.vhd)}, language=VHDL]{../../fpga/dtmf_generator.vhd}
+
+\newpage
+\lstinputlisting[caption={PWM 音频 (pwm\_audio.vhd)}, language=VHDL]{../../fpga/pwm_audio.vhd}
+
 
 
 
