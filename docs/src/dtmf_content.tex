@@ -369,16 +369,16 @@ FPGA 系统采用纯 VHDL 语言编写，采用模块化设计，主要包含以
 \end{figure}
 
 \subsection{综合与时序分析}
-完成设计输入后，进行逻辑综合 (Synthesize)。图 \ref{fig:resource} 展示了设计在 Spartan-6 芯片上的资源占用情况（Device Utilization Summary）。
+完成设计输入后，进行逻辑综合 (Synthesize)。图 \ref{fig:project_status} 展示了设计在 Xilinx ISE 环境下的编译状态。
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{fpga/ise_resource.png}
-    \caption{FPGA 资源占用报告：显示 LUT 与寄存器使用率极低，系统资源充裕}
-    \label{fig:resource}
+    \caption{Xilinx ISE 工程编译与实现状态：各阶段均显示绿色对勾，表明逻辑综合、布局布线及比特流生成均成功完成。}
+    \label{fig:project_status}
 \end{figure}
 
-报告表明，本设计的逻辑资源（Slice LUTs）和存储资源（Block RAM）占用率极低（均在 5\% 以下），说明该方案非常适合在低成本 FPGA 上实现。同时，时序分析表明系统并未出现建立时间或保持时间违例，完全满足 50MHz 的时钟约束要求。
+综合报告（Synthesis Report）的详细数据显示，本设计的逻辑资源（Slice LUTs）和存储资源（Block RAM）占用率极低（均在 5\% 以下），说明该方案非常适合在低成本 FPGA (Spartan-6 LX9) 上实现。同时，时序分析表明系统并未出现建立时间或保持时间违例，完全满足 50MHz 的时钟约束要求。
 
 \subsection{物理实现与板级验证}
 完成布局布线及比特流生成后，将程序下载至 AX309 开发板（图 \ref{fig:board}）。连接示波器和扬声器进行测试，实测按下按键可听到准确的双音多频声音，且可通过板载 LED 观察按键编码状态，验证了系统的硬件可行性。
