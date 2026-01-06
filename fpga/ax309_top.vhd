@@ -10,7 +10,8 @@ entity ax309_top is
         led_out : out STD_LOGIC_VECTOR(3 downto 0); -- 4 LEDs
         audio_pwm : out STD_LOGIC;      -- PWM Output Pin
         seg_data : out STD_LOGIC_VECTOR(7 downto 0); -- Segments
-        seg_sel : out STD_LOGIC_VECTOR(5 downto 0)   -- Digit Select
+        seg_sel : out STD_LOGIC_VECTOR(5 downto 0);   -- Digit Select
+        uart_tx_pin : out STD_LOGIC     -- UART TX Output
     );
 end ax309_top;
 
@@ -20,6 +21,12 @@ architecture Behavioral of ax309_top is
     signal key_idx : integer range 0 to 15;
     signal key_active : std_logic;
     signal audio_pcm : signed(15 downto 0);
+    
+    -- UART Signals
+    signal tx_data_byte : std_logic_vector(7 downto 0);
+    signal tx_start_sig : std_logic := '0';
+    signal tx_busy_sig  : std_logic;
+    signal uart_sampler_cnt : integer range 0 to 6249 := 0; -- Divider for 8kHz sample rate (50M/8000 = 6250)
     
     COMPONENT key_debounce
     Generic ( CLK_FREQ : integer := 50_000_000 );
@@ -58,6 +65,21 @@ architecture Behavioral of ax309_top is
         seg_data : OUT std_logic_vector(7 downto 0);
         seg_sel : OUT std_logic_vector(5 downto 0)
         );
+    END COMPONENT;
+
+    COMPONENT uart_tx
+        Generic (
+            CLK_FREQ  : integer := 50_000_000;
+            BAUD_RATE : integer := 115200
+        );
+        PORT(
+            clk : IN std_logic;
+            rst_n : IN std_logic;
+            tx_data : IN std_logic_vector(7 downto 0);
+            tx_start : IN std_logic;
+            tx_busy : OUT std_logic;
+            tx_pin : OUT std_logic
+            );
     END COMPONENT;
 
 begin
@@ -129,6 +151,44 @@ begin
         display_val => key_idx,
         seg_data => seg_data,
         seg_sel => seg_sel
+    );
+
+
+
+    -- UART Logic: Send 8-bit Audio Sample at 8kHz
+    -- We only send the HIGH BYTE of the 16-bit PCM to fit in 1 byte (lossy but enough for viz)
+    -- Sample Rate: 8000Hz -> Every 6250 clocks
+    process(sys_clk, rst_n_key)
+    begin
+        if rst_n_key = '0' then
+            uart_sampler_cnt <= 0;
+            tx_start_sig <= '0';
+        elsif rising_edge(sys_clk) then
+            if uart_sampler_cnt = 6249 then
+                uart_sampler_cnt <= 0;
+                
+                -- Trigger Transmission if not busy
+                if tx_busy_sig = '0' then
+                    -- Convert signed 16-bit to unsigned 8-bit (centered at 128)
+                    -- Top 8 bits: audio_pcm(15 downto 8)
+                    -- Add 128 to make it unsigned for easier PC handling: signed + 128
+                    tx_data_byte <= std_logic_vector(unsigned(audio_pcm(15 downto 8)) + 128);
+                    tx_start_sig <= '1';
+                end if;
+            else
+                uart_sampler_cnt <= uart_sampler_cnt + 1;
+                tx_start_sig <= '0'; -- Pulse logic
+            end if;
+        end if;
+    end process;
+
+    Inst_UART: uart_tx PORT MAP(
+        clk => sys_clk,
+        rst_n => rst_n_key,
+        tx_data => tx_data_byte,
+        tx_start => tx_start_sig,
+        tx_busy => tx_busy_sig,
+        tx_pin => uart_tx_pin
     );
 
 end Behavioral;

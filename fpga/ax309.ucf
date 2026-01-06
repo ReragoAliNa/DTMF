@@ -39,3 +39,7 @@ NET "seg_sel<2>"  LOC = F10 | IOSTANDARD = "LVCMOS33" | SLEW=FAST;
 NET "seg_sel<3>"  LOC = F9  | IOSTANDARD = "LVCMOS33" | SLEW=FAST;
 NET "seg_sel<4>"  LOC = E8  | IOSTANDARD = "LVCMOS33" | SLEW=FAST;
 NET "seg_sel<5>"  LOC = D8  | IOSTANDARD = "LVCMOS33" | SLEW=FAST;
+
+# UART Serial (USB-UART)
+# TXD of FPGA = RXD of USB Chip -> Pin D12 (Based on references/ax309.ucf)
+NET "uart_tx_pin" LOC = D12 | IOSTANDARD = "LVCMOS33";
