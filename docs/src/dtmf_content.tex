@@ -382,20 +382,48 @@ FPGA 系统采用纯 VHDL 语言编写，采用模块化设计，主要包含以
 \end{itemize}
 
 \subsection{综合结果}
-项目在 Xilinx ISE 14.7 环境下完成综合与实现。图 \ref{fig:rtl_schematic} 展示了综合后的 RTL 顶层电路结构，图 \ref{fig:resource} 展示了布局布线后的资源占用情况。
+项目在 Xilinx ISE 14.7 环境下完成综合与实现。
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{fpga/fpga_rtl1.png}
-    \caption{FPGA 综合电路图 (RTL Schematic)}
-    \label{fig:rtl_schematic}
+    \includegraphics[width=0.95\textwidth]{fpga/ise_project.png}
+    \caption{Xilinx ISE 工程概览}
+    \label{fig:ise_project}
 \end{figure}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.95\textwidth]{fpga/fpga_rtl2.png}
-    \caption{FPGA 资源占用与时序报告}
+    \includegraphics[width=0.95\textwidth]{fpga/ise_synthesis.png}
+    \caption{综合 (Synthesize) 过程}
+    \label{fig:ise_synthesis}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fpga/ise_implement.png}
+    \caption{实现 (Implement Design) 过程}
+    \label{fig:ise_implement}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fpga/ise_resource.png}
+    \caption{FPGA 资源占用报告 (Device Utilization)}
     \label{fig:resource}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fpga/ise_timing.png}
+    \caption{时序分析报告 (Timing Summary)}
+    \label{fig:timing}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{fpga/ise_rtl.png}
+    \caption{RTL 原理图 (RTL Schematic)}
+    \label{fig:rtl_schematic}
 \end{figure}
 
 \section{附录：项目源代码}
