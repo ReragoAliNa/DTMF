@@ -375,37 +375,17 @@ FPGA 系统采用纯 VHDL 语言编写，采用模块化设计，主要包含以
     \caption{FPGA 开发板实物连接与测试环境}
 \end{figure}
 
-\section{附录：完整源代码}
+\section{附录：项目源代码}
 
-\subsection{Python 核心算法}
+由于篇幅限制，本文档仅列出核心算法的关键实现片段。完整项目（包含 Java Web 后端、前端资源、Python 仿真及 FPGA 工程）已开源。
 
-\newpage
-\lstinputlisting[caption={DTMF 核心算法实现 (src/core/dsp.py)}, language=Python]{../../src/core/dsp.py}
+\textbf{开源仓库地址}：\url{https://github.com/ReragoAliNa/DTMF}
 
-\newpage
-\lstinputlisting[caption={自适应检测器 (src/ml/adaptive\_detector.py)}, language=Python]{../../src/ml/adaptive_detector.py}
+\subsection{Python 核心算法实现 (Goertzel)}
+\lstinputlisting[caption={src/core/dsp.py (部分截取)}, language=Python, firstline=1, lastline=45]{../../src/core/dsp.py}
 
-\newpage
-\lstinputlisting[caption={主程序入口 (src/main.py)}, language=Python]{../../src/main.py}
-
-\subsection{Java Web 端核心逻辑}
-
-\newpage
-\lstinputlisting[caption={信号处理服务 (DtmfService.java)}, language=Java]{../../java-web/src/main/java/com/example/dtmf_web/service/DtmfService.java}
-
-\newpage
-\lstinputlisting[caption={RESTful 控制器 (DtmfController.java)}, language=Java]{../../java-web/src/main/java/com/example/dtmf_web/controller/DtmfController.java}
-
-\subsection{FPGA VHDL 源码}
-
-\newpage
-\lstinputlisting[caption={顶层模块 (ax309\_top.vhd)}, language=VHDL]{../../fpga/ax309_top.vhd}
-
-\newpage
-\lstinputlisting[caption={DTMF 发生器 (dtmf\_generator.vhd)}, language=VHDL]{../../fpga/dtmf_generator.vhd}
-
-\newpage
-\lstinputlisting[caption={PWM 音频 (pwm\_audio.vhd)}, language=VHDL]{../../fpga/pwm_audio.vhd}
+\subsection{FPGA 信号发生器逻辑 (VHDL)}
+\lstinputlisting[caption={fpga/dtmf\_generator.vhd (核心逻辑)}, language=VHDL, firstline=40, lastline=108]{../../fpga/dtmf_generator.vhd}
 
 
 
