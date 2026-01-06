@@ -8,7 +8,9 @@ entity ax309_top is
         rst_n_key : in STD_LOGIC;       -- Use a key as reset or global reset
         key_in : in STD_LOGIC_VECTOR(3 downto 0); -- 4 Push buttons
         led_out : out STD_LOGIC_VECTOR(3 downto 0); -- 4 LEDs
-        audio_pwm : out STD_LOGIC       -- PWM Output Pin
+        audio_pwm : out STD_LOGIC;      -- PWM Output Pin
+        seg_data : out STD_LOGIC_VECTOR(7 downto 0); -- Segments
+        seg_sel : out STD_LOGIC_VECTOR(5 downto 0)   -- Digit Select
     );
 end ax309_top;
 
@@ -45,6 +47,16 @@ architecture Behavioral of ax309_top is
         rst_n : IN std_logic;
         pcm_in : IN signed(15 downto 0);
         pwm_out : OUT std_logic
+        );
+    END COMPONENT;
+
+    COMPONENT seg_display
+    PORT(
+        clk : IN std_logic;
+        rst_n : IN std_logic;
+        display_val : IN integer range 0 to 15;
+        seg_data : OUT std_logic_vector(7 downto 0);
+        seg_sel : OUT std_logic_vector(5 downto 0)
         );
     END COMPONENT;
 
@@ -108,6 +120,15 @@ begin
         rst_n => rst_n_key,
         pcm_in => audio_pcm,
         pwm_out => audio_pwm
+    );
+
+    -- 7-Segment Display
+    Inst_Seg: seg_display PORT MAP(
+        clk => sys_clk,
+        rst_n => rst_n_key,
+        display_val => key_idx,
+        seg_data => seg_data,
+        seg_sel => seg_sel
     );
 
 end Behavioral;
