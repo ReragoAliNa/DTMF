@@ -1,0 +1,94 @@
+\documentclass[a4paper,12pt,fontset=fandol]{ctexart}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+
+% 代码样式配置
+\definecolor{codegray}{rgb}{0.95,0.95,0.95}
+\definecolor{codeblue}{rgb}{0.0,0.0,0.6}
+\definecolor{codegreen}{rgb}{0.0,0.4,0.0}
+\definecolor{codepurple}{rgb}{0.5,0.0,0.5}
+
+\lstset{
+    backgroundcolor=\color{codegray},   % 浅灰背景
+    commentstyle=\color{codegreen}\itshape, % 注释绿色斜体
+    keywordstyle=\color{codeblue}\bfseries, % 关键字蓝色粗体
+    numberstyle=\tiny\color{gray},      % 行号样式
+    stringstyle=\color{codepurple},     % 字符串紫色
+    basicstyle=\footnotesize\ttfamily,  % 基础字体缩小并使用等宽
+    breakatwhitespace=false,
+    breaklines=true,                    % 自动换行
+    captionpos=t,                       % 标题在上方
+    keepspaces=true,
+    numbers=left,                       % 行号在左侧
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4,
+    frame=shadowbox,                    % 阴影边框
+    rulesepcolor=\color{gray},          % 边框颜色
+    xleftmargin=1em,                    % 左侧缩进
+    xrightmargin=1em,                   % 右侧缩进
+    aboveskip=1.5em,                    % 上方间距
+    belowskip=1.5em                     % 下方间距
+}
+
+% 设置页面边距
+\geometry{left=2.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
+
+% 图片路径
+\graphicspath{{../../images/}{../build/}}
+
+% 设置章节标题左对齐
+\ctexset{
+  section = {
+    format = \Large\bfseries
+  }
+}
+
+\begin{document}
+
+% --- 封面 ---
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    
+    % 标题
+    {\ifx\heiti\undefined\bfseries\else\heiti\fi\fontsize{36pt}{48pt}\selectfont 信号处理综合课程设计\par}
+    \vspace{0.5cm}
+    {\ifx\heiti\undefined\bfseries\else\heiti\fi\fontsize{36pt}{48pt}\selectfont 说\hspace{1cm}明\hspace{1cm}书\par}
+    
+    \vspace{5cm}
+    
+    % 信息字段
+    {\Large
+    \renewcommand{\arraystretch}{2} % 行高
+    \begin{tabular}{ll}
+        \textbf{设计题目：} & \underline{\makebox[10cm][c]{双音多频 (DTMF) 信号的合成与识别}} \\
+        \textbf{姓名：} & \underline{\makebox[4cm][c]{Name}} \hspace{0.5cm} \textbf{学号：} \underline{\makebox[4.2cm][c]{ID}} \\
+        \textbf{班级：} & \underline{\makebox[4cm][c]{Class}} \hspace{0.5cm} \textbf{成绩：} \underline{\makebox[4.2cm][c]{}} \\
+    \end{tabular}
+    }
+    
+    \vfill
+    
+    {\large 2026 年 1 月 1 日}
+    \vspace{2cm}
+\end{titlepage}
+
+% --- 目录 ---
+\newpage
+\tableofcontents
+\newpage
+
+% --- 正文 ---
+\input{dtmf_content}
+
+\end{document}
