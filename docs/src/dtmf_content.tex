@@ -352,41 +352,41 @@ FPGA 系统采用纯 VHDL 语言编写，采用模块化设计，主要包含以
 
 \section{FPGA 系统实现与验证}
 
-\subsection{逻辑设计与仿真}
-本设计在 Xilinx ISE 14.7 环境下进行开发。为了验证核心算法，我们使用 GHDL 进行了仿真。图 \ref{fig:gtkwave} 展示了模拟按下数字键 \textbf{'1'} 时的波形状态。
+\section{FPGA 系统实现与验证}
 
-\begin{enumerate}
-    \item \textbf{信号特征}：此时 \texttt{key\_idx}=1，系统同时生成 $697\text{Hz}$ (行频) 和 $1209\text{Hz}$ (列频) 的正弦波。
-    \item \textbf{相位累加}：图中上方较密的锯齿波对应 $1209\text{Hz}$ 高频分量，下方较疏的锯齿波对应 $697\text{Hz}$ 低频分量。
-    \item \textbf{查表输出}：\texttt{data} 信号展示了相位到幅度的正确映射，验证了 DDS 逻辑的正确性。
-\end{enumerate}
+\subsection{逻辑设计与仿真 (Design Verification)}
+本设计采用自顶向下的设计方法。在将代码下载到 FPGA 之前，首先对核心的 DDS 信号生成模块进行了严格的 RTL 级仿真。
+图 \ref{fig:gtkwave} 展示了测试平台模拟按下数字键 \textbf{'1'} 时的 GHDL 仿真波形：
+\begin{itemize}
+    \item \textbf{绿色波形 (addr)}：代表相位累加器的输出。可以看到两种不同斜率的锯齿波，分别对应 697Hz (行频) 和 1209Hz (列频)。
+    \item \textbf{红色波形 (data)}：代表查表后的正弦波输出。仿真结果证明了双音信号的频率和相位关系完全准确。
+\end{itemize}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{fpga/gtkwave_simulation.png}
-    \caption{GHDL + GTKWave 仿真图：按键 '1' ($697\text{Hz} + 1209\text{Hz}$) 的生成过程}
+    \caption{GHDL 仿真波形：按键 '1' 的双音信号生成过程验证}
     \label{fig:gtkwave}
 \end{figure}
 
-\subsection{综合与时序分析}
-完成设计输入后，进行逻辑综合 (Synthesize)。图 \ref{fig:project_status} 展示了设计在 Xilinx ISE 环境下的编译状态。
+\subsection{工程构建与综合 (Project Implementation)}
+逻辑验证通过后，在 Xilinx ISE 14.7 环境下进行完整的工程构建。
+如图 \ref{fig:project_status} 所示，工程树中的 "Synthesize"（综合）、"Implement Design"（布局布线）以及 "Generate Programming File"（比特流生成）均显示为绿色对勾状态。这标志着设计已成功通过所有编译阶段，且满足时序约束，生成的 \texttt{.bit} 文件可用于物理下载。
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{fpga/ise_resource.png}
-    \caption{Xilinx ISE 工程编译与实现状态：各阶段均显示绿色对勾，表明逻辑综合、布局布线及比特流生成均成功完成。}
+    \caption{Xilinx ISE 工程全流程编译通过状态概览}
     \label{fig:project_status}
 \end{figure}
 
-综合报告（Synthesis Report）的详细数据显示，本设计的逻辑资源（Slice LUTs）和存储资源（Block RAM）占用率极低（均在 5\% 以下），说明该方案非常适合在低成本 FPGA (Spartan-6 LX9) 上实现。同时，时序分析表明系统并未出现建立时间或保持时间违例，完全满足 50MHz 的时钟约束要求。
-
-\subsection{物理实现与板级验证}
-完成布局布线及比特流生成后，将程序下载至 AX309 开发板（图 \ref{fig:board}）。连接示波器和扬声器进行测试，实测按下按键可听到准确的双音多频声音，且可通过板载 LED 观察按键编码状态，验证了系统的硬件可行性。
+\subsection{板级硬件测试 (Hardware Test)}
+最后，将生成的比特流下载至 AX309 (Spartan-6) 开发板进行实测。测试环境如图 \ref{fig:board} 所示，通过示波器捕捉引脚输出，并驱动扬声器进行听觉验证。实验结果表明，按键触发灵敏，输出音调准确，达到了设计预期。
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.8\textwidth]{fpga/fpga_board.png}
-    \caption{FPGA 开发板实物连接与测试环境}
+    \caption{FPGA 开发板实物连接与测试现场}
     \label{fig:board}
 \end{figure}
 
