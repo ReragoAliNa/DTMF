@@ -13,26 +13,33 @@
                 /* Phone Mode Specific Styles */
                 .hero-display {
                     font-family: 'Cinzel', serif;
-                    font-size: 4rem;
+                    font-size: clamp(1.5rem, 4vw, 4rem);
                     color: white;
                     text-align: center;
                     margin-bottom: 1rem;
                     text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
-                    min-height: 100px;
+                    min-height: 60px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    letter-spacing: 0.2em;
+                    letter-spacing: 0.15em;
+                    word-break: break-all;
+                    overflow-wrap: break-word;
+                    padding: 0 1rem;
+                    max-width: 100%;
                 }
 
                 .session-info {
-                    text-align: center;
+                    position: absolute;
+                    top: 1rem;
+                    right: 2rem;
                     color: var(--text-sub);
-                    margin-bottom: 2rem;
                     font-family: var(--font-body);
                     text-transform: uppercase;
                     letter-spacing: 0.1em;
-                    font-size: 0.8rem;
+                    font-size: 0.75rem;
+                    opacity: 0.7;
+                    z-index: 10;
                 }
 
                 .stats-box-container {
@@ -187,9 +194,15 @@
                         </div>
                     </div>
 
-                    <div class="chart-card" style="margin: 0 auto 2rem auto;">
-                        <div class="chart-title">REAL-TIME SPECTRUM</div>
-                        <div style="width:100%; height:100%;"><canvas id="energyChart"></canvas></div>
+                    <div style="display:flex; gap:1rem; margin: 0 auto 2rem auto; max-width:900px;">
+                        <div class="chart-card" style="flex:1;">
+                            <div class="chart-title">TIME DOMAIN</div>
+                            <div style="width:100%; height:150px;"><canvas id="waveformChart"></canvas></div>
+                        </div>
+                        <div class="chart-card" style="flex:1;">
+                            <div class="chart-title">FREQUENCY SPECTRUM</div>
+                            <div style="width:100%; height:150px;"><canvas id="energyChart"></canvas></div>
+                        </div>
                     </div>
 
                     <div style="width:100%; max-width:800px; margin: 0 auto;">
@@ -222,7 +235,7 @@
 
                 <!-- RIGHT: Control Panel -->
                 <div class="control-sidebar">
-                    <h1 class="brand-title">DTMF<span style="font-weight:300; opacity:0.5;">Phone</span></h1>
+                    <h1 class="brand-title">ReragoAliNa<span style="font-weight:300; opacity:0.5;">Phone</span></h1>
 
                     <div class="nav-menu">
                         <div class="section-title">Navigation</div>
@@ -269,6 +282,11 @@
                         <div class="action-btns">
                             <button id="backspaceBtn" class="btn-secondary">Backspace</button>
                             <button id="clearBtn" class="btn-secondary">Clear</button>
+                        </div>
+                        <div style="margin-top:10px; display:flex; align-items:center; gap:8px; font-size:0.8rem;">
+                            <input type="checkbox" id="hwModeCheck">
+                            <label for="hwModeCheck" style="cursor:pointer; color:var(--text-sub);">Hardware Only (No
+                                Web Save)</label>
                         </div>
                     </div>
 
@@ -390,6 +408,7 @@
                         const data = await res.json();
                         if (data.success) {  // Fixed: was data.status === 'started'
                             sessionActive = true;
+                            lastKeyTime = Date.now(); // Ignore any events that happened before clicking start
                             dialedNumber = '';
                             totalCount = 0;
                             successCount = 0;
@@ -485,24 +504,84 @@
                     });
                 }
 
+                var waveformChart = null;
+                function updateWaveformChart(waveformData) {
+                    if (!waveformData || waveformData.length === 0) return;
+                    if (waveformChart) waveformChart.destroy();
+                    const ctx = document.getElementById('waveformChart').getContext('2d');
+                    const labels = waveformData.map((_, i) => i);
+                    waveformChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                data: waveformData,
+                                borderColor: '#4aa3df',
+                                borderWidth: 1,
+                                pointRadius: 0,
+                                fill: false,
+                                tension: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { display: false },
+                                x: { display: false }
+                            },
+                            animation: false
+                        }
+                    });
+                }
+
+                function handleKeyPressUI(key, updateNumber = true) {
+                    const btn = document.querySelector('.numpad-key[data-key="' + key + '"]');
+                    if (!btn) return;
+
+                    // Visual feedback
+                    btn.style.backgroundColor = 'white';
+                    btn.style.color = 'black';
+                    setTimeout(() => {
+                        btn.style.backgroundColor = '';
+                        btn.style.color = '';
+                    }, 200);
+
+                    // Update Display Number (only if updateNumber is true)
+                    if (updateNumber) {
+                        dialedNumber += key;
+                        document.getElementById('phoneNumberDisplay').innerText = dialedNumber;
+                    }
+
+                    // Play Sound
+                    playDtmfTone(key);
+                }
+
                 document.getElementById('phoneNumpad').querySelectorAll('.numpad-key').forEach(keyEl => {
                     keyEl.addEventListener('click', async () => {
                         if (!sessionActive) return;
                         const key = keyEl.dataset.key;
 
-                        // Visual feedback
-                        keyEl.style.backgroundColor = 'white';
-                        keyEl.style.color = 'black';
-                        setTimeout(() => {
-                            keyEl.style.backgroundColor = '';
-                            keyEl.style.color = '';
-                        }, 200);
+                        // Hardware Mode: ignore all web clicks
+                        if (document.getElementById('hwModeCheck').checked) {
+                            return;
+                        }
 
+                        // 1. Update UI immediately (without updating dialed number - will be done after backend response)
+                        handleKeyPressUI(key, false);
+
+                        // If Hardware Only mode is ON, skip sending data to backend
+                        if (document.getElementById('hwModeCheck').checked) {
+                            return;
+                        }
+
+                        // 2. Send to Backend
                         const snr = document.getElementById('snrRange').value;
                         const noiseType = document.getElementById('noiseType').value;
 
                         try {
-                            const res = await fetch('${pageContext.request.contextPath}/api/dtmf/phone/press?key=' + encodeURIComponent(key) + '&duration=1.0&snr=' + snr + '&noiseType=' + noiseType, { method: 'POST' });
+                            const res = await fetch('${pageContext.request.contextPath}/api/dtmf/phone/press?key=' + encodeURIComponent(key) + '&duration=1.0&snr=' + snr + '&noiseType=' + noiseType + '&source=web', { method: 'POST' });
                             const data = await res.json();
 
                             // 播放加噪后的声音
@@ -542,6 +621,7 @@
 
                             const historyRow = document.createElement('tr');
                             historyRow.className = 'log-row';
+                            historyRow.style.cursor = 'pointer';
                             historyRow.innerHTML = `
                                 <td>\${timeStr}</td>
                                 <td style="font-weight:bold; color:white;">\${key}</td>
@@ -551,13 +631,82 @@
                                 <td class="\${match ? 'log-status-ok' : 'log-status-fail'}">\${match ? 'MATCH' : 'MISMATCH'}</td>
                             `;
 
+                            // Store chart data for click-to-view
+                            historyRow._chartData = {
+                                energies: data.energies,
+                                waveformSample: data.waveformSample
+                            };
+                            historyRow.addEventListener('click', function () {
+                                document.querySelectorAll('#historyList tr').forEach(r => r.style.background = '');
+                                this.style.background = 'rgba(74, 163, 223, 0.2)';
+                                if (this._chartData.energies) updateEnergyChart(this._chartData.energies);
+                                if (this._chartData.waveformSample) updateWaveformChart(this._chartData.waveformSample);
+                            });
+
                             const historyList = document.getElementById('historyList');
                             historyList.insertBefore(historyRow, historyList.firstChild);
 
                             if (data.energies) updateEnergyChart(data.energies);
+                            if (data.waveformSample) updateWaveformChart(data.waveformSample);
                         } catch (e) { console.error(e); }
                     });
                 });
+                // Auto Polling for Hardware events
+                let lastKeyTime = 0;
+                setInterval(async () => {
+                    if (!sessionActive) return;
+                    try {
+                        const res = await fetch('${pageContext.request.contextPath}/api/dtmf/phone/last-key?since=' + lastKeyTime);
+                        const data = await res.json();
+                        if (data.hasNew) {
+                            // Non-Hardware Mode: ignore all FPGA events
+                            if (!document.getElementById('hwModeCheck').checked) {
+                                return;
+                            }
+
+                            lastKeyTime = data.time;
+                            const key = String(data.key);
+
+                            // Only update UI, do NOT call backend again!
+                            handleKeyPressUI(key);
+
+                            // Add a simplified log entry for hardware event
+                            const now = new Date();
+                            const timeStr = now.getHours().toString().padStart(2, '0') + ':' +
+                                now.getMinutes().toString().padStart(2, '0') + ':' +
+                                now.getSeconds().toString().padStart(2, '0');
+
+                            const historyRow = document.createElement('tr');
+                            historyRow.className = 'log-row';
+                            historyRow.style.cursor = 'pointer';
+                            historyRow.innerHTML = `<td>\${timeStr}</td><td style="color:#4aa3df;font-weight:bold;">\${key}</td><td>(HW)</td><td>-</td><td>FPGA</td><td class="log-status-ok">RX</td>`;
+
+                            // Store chart data for click-to-view
+                            historyRow._chartData = {
+                                energies: data.energies,
+                                waveformSample: data.waveformSample
+                            };
+                            historyRow.addEventListener('click', function () {
+                                document.querySelectorAll('#historyList tr').forEach(r => r.style.background = '');
+                                this.style.background = 'rgba(74, 163, 223, 0.2)';
+                                if (this._chartData.energies) updateEnergyChart(this._chartData.energies);
+                                if (this._chartData.waveformSample) updateWaveformChart(this._chartData.waveformSample);
+                            });
+
+                            const list = document.getElementById('historyList');
+                            list.insertBefore(historyRow, list.firstChild);
+
+                            // Update stats for hardware events
+                            totalCount++;
+                            successCount++; // FPGA events are always considered successful
+                            updateStats();
+
+                            // Update charts from polling data
+                            if (data.energies) updateEnergyChart(data.energies);
+                            if (data.waveformSample) updateWaveformChart(data.waveformSample);
+                        }
+                    } catch (e) { }
+                }, 200);
             </script>
         </body>
 

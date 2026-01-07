@@ -127,7 +127,7 @@
 
                 <!-- RIGHT SIDE: Control & Navigation -->
                 <div class="control-sidebar">
-                    <h1 class="brand-title">DTMF<span style="font-weight:300; opacity:0.5;">Lab</span></h1>
+                    <h1 class="brand-title">ReragoAliNa<span style="font-weight:300; opacity:0.5;">Lab</span></h1>
 
                     <div class="nav-menu">
                         <div class="section-title">Navigation</div>

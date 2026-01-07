@@ -16,6 +16,8 @@ show_usage() {
     echo ""
     echo "Commands:"
     echo "  gui       Launch the Java Web GUI (Interactive demo)"
+    echo "  bridge    Start the FPGA-to-Java serial bridge (Python)"
+    echo "  all       Start both GUI and Bridge together"
     echo "  stop      Stop the running GUI server (kill port 8081)"
     echo "  sim       Run basic Python simulation (Generates plots in images/)"
     echo "  exp       Run performance comparison experiments"
@@ -47,6 +49,41 @@ run_gui() {
     echo -e "${GREEN}Starting Java Web GUI on http://localhost:8081...${NC}"
     cd java-web
     ./mvnw spring-boot:run
+}
+
+run_bridge() {
+    # Kill any existing bridge process
+    pkill -f fpga_uart_bridge.py 2>/dev/null
+    sleep 0.5
+    
+    echo -e "${GREEN}Starting FPGA-to-Java Serial Bridge...${NC}"
+    
+    # Check if venv exists
+    if [ ! -d "venv" ]; then
+        echo -e "${RED}Python venv not found. Creating...${NC}"
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install pyserial requests numpy
+    fi
+    
+    ./venv/bin/python ./bridge/fpga_uart_bridge.py
+}
+
+run_all() {
+    echo -e "${BLUE}Starting all services...${NC}"
+    
+    # Start GUI in background
+    run_gui &
+    GUI_PID=$!
+    
+    # Wait a bit for GUI to start
+    sleep 3
+    
+    # Start bridge in foreground
+    run_bridge
+    
+    # When bridge exits, kill GUI
+    kill $GUI_PID 2>/dev/null
 }
 
 run_sim() {
@@ -119,8 +156,15 @@ case "$1" in
     gui)
         run_gui
         ;;
+    bridge)
+        run_bridge
+        ;;
+    all)
+        run_all
+        ;;
     stop)
         stop_gui
+        pkill -f fpga_uart_bridge.py 2>/dev/null
         ;;
     sim)
         run_sim

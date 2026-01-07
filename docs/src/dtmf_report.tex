@@ -8,7 +8,9 @@
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{tcolorbox}
-\lstloadlanguages{Python,Java,VHDL}
+% \lstloadlanguages{python,java,vhdl}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning}
 
 % 代码样式配置
 \definecolor{codegray}{rgb}{0.95,0.95,0.95}
@@ -16,9 +18,9 @@
 \definecolor{codegreen}{rgb}{0.0,0.4,0.0}
 \definecolor{codepurple}{rgb}{0.5,0.0,0.5}
 
-\lstset{
+    \lstset{
     backgroundcolor=\color{codegray},   % 浅灰背景
-    commentstyle=\color{codegreen}\itshape, % 注释绿色斜体
+    commentstyle=\color{codegreen},      % 注释绿色 (去除斜体以避免 CJK 字体警告)
     keywordstyle=\color{codeblue}\bfseries, % 关键字蓝色粗体
     numberstyle=\tiny\color{gray},      % 行号样式
     stringstyle=\color{codepurple},     % 字符串紫色

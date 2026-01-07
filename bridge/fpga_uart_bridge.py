@@ -25,7 +25,7 @@ SAMPLE_RATE = 8000
 BLOCK_SIZE = 800  # 100ms
 serial_buffer = collections.deque(maxlen=SAMPLE_RATE * 2) # 2 sec buffer
 
-JAVA_URL = "http://localhost:8080/api/dtmf/phone/press"
+JAVA_URL = "http://localhost:8081/api/dtmf/phone/press"
 
 def find_fpga_port():
     """Auto-detect USB Serial Port (CP210x usually)"""
@@ -48,9 +48,16 @@ def process_audio_stream(port_name):
 
     print("Listening for waveforms...")
     
+    print("   [Info] Creating buffer, waiting for stream stabilization...")
     current_block = []
     last_key = None
     silence_cnt = 0
+    
+    # 忽略启动后前 1 秒的数据，等待 FPGA 和串口稳定
+    # Ignore startup transient noise
+    start_time = time.time()
+    stabilized = False
+
     
     while True:
         # Read byte
@@ -59,12 +66,27 @@ def process_audio_stream(port_name):
             # Convert unsigned byte (0-255) to float (-1.0 to 1.0)
             # FPGA sends: (audio >> 8) + 128
             # Restore roughly: (val - 128) / 128.0
+            # Debug data flow
+            # if len(chunk) > 0:
+            #      print(f".", end="", flush=True)
+
             for b in chunk:
                 val = (float(b) - 128.0) / 128.0
                 current_block.append(val)
+            # FORCE DEBUG: Print raw chunk size if > 0
+            # print(f"[Debug] Rx {len(chunk)} bytes")
         
         # Process block
         if len(current_block) >= BLOCK_SIZE:
+            # Check for stabilization
+            if not stabilized:
+                if time.time() - start_time < 1.0:
+                    current_block = [] # Discard data during stabilization
+                    continue
+                else:
+                    stabilized = True
+                    print("   [Info] Stream stabilized. Ready for events.")
+
             # Analyze
             sig = np.array(current_block)
             key = dsp.identify_key(sig, use_filter=True, require_valid=True)
@@ -73,7 +95,7 @@ def process_audio_stream(port_name):
                 silence_cnt = 0
                 if last_key != key:
                     print(f"   [UART Event] Detected Tone: {key}")
-                    send_to_java(key)
+                    send_to_java(key, sig)
                     last_key = key
             else:
                 silence_cnt += 1
@@ -86,11 +108,20 @@ def process_audio_stream(port_name):
             
         time.sleep(0.001)
 
-def send_to_java(key):
+def send_to_java(key, waveform):
+    """Send detected key AND actual waveform to Java for adaptive analysis"""
     try:
-        requests.post(JAVA_URL, params={'key': key, 'duration': 0.1, 'snr': 90, 'noiseType': 'SERIAL'})
-    except:
-        pass
+        # Send waveform as JSON array (limit to 4000 samples for efficiency)
+        waveform_list = waveform[:4000].tolist() if len(waveform) > 4000 else waveform.tolist()
+        
+        resp = requests.post(
+            JAVA_URL, 
+            params={'key': key, 'duration': 0.1, 'snr': 0, 'noiseType': 'FPGA_RAW', 'source': 'hardware'},
+            json={'waveform': waveform_list}
+        )
+        print(f"   [Bridge] Sent to Java: {resp.status_code}")
+    except Exception as e:
+        print(f"   [Bridge] Error sending to Java: {e}")
 
 if __name__ == "__main__":
     port = find_fpga_port()

@@ -81,3 +81,5 @@ Thumbs.db
 audio/
 datasets/
 !datasets/esc50/
+*.ghw
+sim_build/

@@ -23,8 +23,11 @@
                     overflow-y: auto;
                     border: 1px solid var(--border-color);
                     background: rgba(0, 0, 0, 0.3);
-                    margin-bottom: 2rem;
-                    max-height: 400px;
+                    margin-bottom: 1rem;
+                    min-height: 100px;
+                    max-height: 600px;
+                    height: 250px;
+                    resize: vertical;
                 }
 
                 .session-item {
@@ -252,6 +255,21 @@
                             <div style="width:100%; height:100%;"><canvas id="distributionChart"></canvas></div>
                         </div>
 
+                        <div style="display:flex; gap:1rem; margin-top:2rem;">
+                            <div class="chart-card" style="flex:1;">
+                                <div class="chart-title">SELECTED FILE - TIME DOMAIN</div>
+                                <div style="width:100%; height:150px;"><canvas id="analyzeWaveformChart"></canvas></div>
+                            </div>
+                            <div class="chart-card" style="flex:1;">
+                                <div class="chart-title">SELECTED FILE - FREQUENCY SPECTRUM</div>
+                                <div style="width:100%; height:150px;"><canvas id="analyzeEnergyChart"></canvas></div>
+                            </div>
+                        </div>
+                        <div id="selectedFileInfo"
+                            style="text-align:center; color:var(--text-sub); font-size:0.75rem; margin-top:0.5rem;">
+                            Click a file in the log to view its waveform and spectrum
+                        </div>
+
                         <div style="margin-top:2rem;">
                             <div class="section-title">Log Details</div>
                             <div class="details-container">
@@ -278,7 +296,7 @@
 
                 <!-- RIGHT: Control Panel -->
                 <div class="control-sidebar">
-                    <h1 class="brand-title">DTMF<span style="font-weight:300; opacity:0.5;">Data</span></h1>
+                    <h1 class="brand-title">ReragoAliNa<span style="font-weight:300; opacity:0.5;">Data</span></h1>
 
                     <div class="nav-menu">
                         <div class="section-title">Navigation</div>
@@ -448,12 +466,14 @@
                     const msg = toDelete.length === 1
                         ? '确定要删除会话 "' + toDelete[0] + '" 吗？'
                         : '确定要删除 ' + toDelete.length + ' 个会话吗？';
+
                     if (!confirm(msg + '\n\n此操作不可撤销。')) return;
 
                     let successCount = 0, failCount = 0;
                     for (const sessionName of toDelete) {
                         try {
-                            const res = await fetch('${pageContext.request.contextPath}/api/dtmf/phone/session?sessionName=' + encodeURIComponent(sessionName), {
+                            const res = await fetch('${pageContext.request.contextPath}/api/dtmf/phone/session?sessionName=' +
+                                encodeURIComponent(sessionName), {
                                 method: 'DELETE'
                             });
                             const data = await res.json();
@@ -471,12 +491,11 @@
 
                     // 刷新列表
                     document.getElementById('refreshBtn').click();
+
                     // 重置界面
                     selectedSession = null;
                     selectedSessions.clear();
                     updateSelectionUI();
-                    document.getElementById('initialState').style.display = 'block';
-                    document.getElementById('analysisResult').style.display = 'none';
                 });
 
                 document.getElementById('analyzeBtn').addEventListener('click', async () => {
@@ -492,13 +511,15 @@
                         const durationMs = parseInt(document.getElementById('durationSlider').value);
                         const durationSec = durationMs / 1000.0;
 
-                        let url = '${pageContext.request.contextPath}/api/dtmf/phone/analyze?sessionName=' + encodeURIComponent(selectedSession);
+                        let url = '${pageContext.request.contextPath}/api/dtmf/phone/analyze?sessionName=' +
+                            encodeURIComponent(selectedSession);
                         if (useAdaptive) {
                             url += '&duration=adaptive';
-                        } else if (durationMs < 1000) {
+                        } else {
+                            // Always send manual duration (in seconds) when not adaptive
                             url += '&duration=' + durationSec.toFixed(3);
                         }
-                        // If durationMs == 1000, don't send duration param (use full signal)
+
 
                         const res = await fetch(url);
                         const data = await res.json();
@@ -533,24 +554,46 @@
                             updateDistributionChart(data.phoneNumber);
 
                             if (data.details && data.details.length > 0) {
-                                document.getElementById('detailsList').innerHTML = data.details.map((d, i) => {
+                                const detailsList = document.getElementById('detailsList');
+                                detailsList.innerHTML = data.details.map((d, i) => {
                                     const isSuccess = d.match === true;
                                     const snrVal = (typeof d.snrEstimate === 'number') ? d.snrEstimate.toFixed(1) + 'dB' : (d.snrEstimate || '-');
                                     const modeVal = d.mode || '-';
-                                    // 从 signalDuration 获取信号时长（毫秒）
                                     const signalTime = (typeof d.signalDuration === 'number') ? d.signalDuration.toFixed(0) + 'ms' : '-';
                                     return `
-                                <tr class="log-row">
-                                    <td style="font-size:0.7rem;">\${d.filename || 'item_' + i}</td>
-                                    <td style="color:white; font-weight:bold;">\${d.originalKey || '-'}</td>
-                                    <td style="color:\${isSuccess ? '#4aa3df' : '#d9534f'}; font-weight:bold;">\${d.identified || '?'}</td>
-                                    <td style="font-size:0.7rem; opacity:0.7;">\${modeVal}</td>
-                                    <td style="font-size:0.75rem;">\${snrVal}</td>
-                                    <td style="font-size:0.75rem; color:#7ecf8e;">\${signalTime}</td>
-                                    <td class="\${isSuccess ? 'log-status-ok' : 'log-status-fail'}">\${isSuccess ? 'OK' : 'FAIL'}</td>
-                                </tr>
-                            `;
+                                    <tr class="log-row" data-index="\${i}" style="cursor:pointer;">
+                                        <td style="font-size:0.7rem;">\${d.filename || 'item_' + i}</td>
+                                        <td style="color:white; font-weight:bold;">\${d.originalKey || '-'}</td>
+                                        <td style="color:\${isSuccess ? '#4aa3df' : '#d9534f'}; font-weight:bold;">\${d.identified || '?'}</td>
+                                        <td style="font-size:0.7rem; opacity:0.7;">\${modeVal}</td>
+                                        <td style="font-size:0.75rem;">\${snrVal}</td>
+                                        <td style="font-size:0.75rem; color:#7ecf8e;">\${signalTime}</td>
+                                        <td class="\${isSuccess ? 'log-status-ok' : 'log-status-fail'}">\${isSuccess ? 'OK' : 'FAIL'}</td>
+                                    </tr>
+                                    `;
                                 }).join('');
+
+                                // Bind click events
+                                detailsList.querySelectorAll('.log-row').forEach(row => {
+                                    row.addEventListener('click', () => {
+                                        // Highlight selection
+                                        detailsList.querySelectorAll('.log-row').forEach(r => r.style.background = '');
+                                        row.style.background = 'rgba(74, 163, 223, 0.2)';
+
+                                        // Update charts
+                                        const idx = parseInt(row.dataset.index);
+                                        const item = data.details[idx];
+
+                                        // Update file info text
+                                        document.getElementById('selectedFileInfo').innerHTML =
+                                            `Viewing: <span style="color:white;">\${item.filename}</span> | ` +
+                                            `Key: \${item.originalKey} -> \${item.identified} | ` +
+                                            `SNR: \${(item.snrEstimate||0).toFixed(1)}dB`;
+
+                                        if (item.waveformSample) updateAnalyzeWaveformChart(item.waveformSample);
+                                        if (item.energies) updateAnalyzeEnergyChart(item.energies);
+                                    });
+                                });
                             }
                         } else {
                             document.getElementById('heroNumber').innerText = 'NO DATA';
@@ -584,6 +627,77 @@
                             scales: {
                                 y: { beginAtZero: true, grid: { display: false } },
                                 x: { display: true, ticks: { color: '#888' } }
+                            },
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+
+                let analyzeWaveformChart = null;
+                let analyzeEnergyChart = null;
+
+                function updateAnalyzeWaveformChart(waveform) {
+                    const ctx = document.getElementById('analyzeWaveformChart').getContext('2d');
+                    if (analyzeWaveformChart) analyzeWaveformChart.destroy();
+
+                    analyzeWaveformChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: Array.from({ length: waveform.length }, (_, i) => i),
+                            datasets: [{
+                                label: 'Amplitude',
+                                data: waveform,
+                                borderColor: '#4aa3df',
+                                borderWidth: 1,
+                                pointRadius: 0,
+                                fill: false,
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: false,
+                            scales: {
+                                x: { display: false },
+                                y: {
+                                    display: true,
+                                    min: -1.2,
+                                    max: 1.2,
+                                    grid: { color: '#333' }
+                                }
+                            },
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+
+                function updateAnalyzeEnergyChart(energies) {
+                    const ctx = document.getElementById('analyzeEnergyChart').getContext('2d');
+                    if (analyzeEnergyChart) analyzeEnergyChart.destroy();
+
+                    const freqs = ['697', '770', '852', '941', '1209', '1336', '1477', '1633'];
+                    // Find max energy to normalize colors
+                    const maxE = Math.max(...energies);
+                    const bgColors = energies.map(e => e > maxE * 0.5 ? '#4aa3df' : '#555');
+
+                    analyzeEnergyChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: freqs,
+                            datasets: [{
+                                data: energies,
+                                backgroundColor: bgColors,
+                                borderRadius: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: false,
+                            scales: {
+                                y: { beginAtZero: true, display: false },
+                                x: { ticks: { color: '#888', font: { size: 10 } }, grid: { display: false } }
                             },
                             plugins: { legend: { display: false } }
                         }

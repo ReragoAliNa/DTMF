@@ -49,14 +49,31 @@ public class DtmfController {
             @RequestParam char key,
             @RequestParam(defaultValue = "0.2") double duration,
             @RequestParam(required = false) Double snr,
-            @RequestParam(defaultValue = "GAUSSIAN") String noiseType) {
-        return dtmfService.pressKeyAndSave(key, duration, snr, noiseType);
+            @RequestParam(defaultValue = "GAUSSIAN") String noiseType,
+            @RequestParam(defaultValue = "unknown") String source,
+            @RequestBody(required = false) Map<String, Object> body) {
+
+        // Extract waveform from body if present (for FPGA raw data)
+        double[] fpgaWaveform = null;
+        if (body != null && body.containsKey("waveform")) {
+            @SuppressWarnings("unchecked")
+            java.util.List<Number> waveformList = (java.util.List<Number>) body.get("waveform");
+            fpgaWaveform = waveformList.stream().mapToDouble(Number::doubleValue).toArray();
+        }
+
+        return dtmfService.pressKeyAndSave(key, duration, snr, noiseType, source, fpgaWaveform);
     }
 
     // 结束电话会话
     @PostMapping("/phone/end")
     public Map<String, Object> endPhoneSession() {
         return dtmfService.endPhoneSession();
+    }
+
+    // 获取最新按键 (Polling)
+    @GetMapping("/phone/last-key")
+    public Map<String, Object> getLastKey(@RequestParam(defaultValue = "0") long since) {
+        return dtmfService.getLastKey(since);
     }
 
     // 获取会话状态

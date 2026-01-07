@@ -17,6 +17,10 @@ public class DtmfService {
     // Phone mode session management
     private String currentSessionFolder = null;
     private int keyPressIndex = 0;
+    // For polling: store last key press info
+    private Character lastKey = null;
+    private long lastKeyTime = 0;
+    private Map<String, Object> lastResult = null;
 
     static {
         FREQ_MAP.put('1', new double[] { 697, 1209 });
@@ -44,6 +48,7 @@ public class DtmfService {
         PINK, // 粉红噪声 (1/f)
         IMPULSE, // 脉冲噪声
         UNIFORM, // 均匀噪声
+        SERIAL, // 串口/硬件实时数据 (不加噪)
         // ESC-50 dataset categories
         RAIN, // 雨声
         WIND, // 风声
@@ -441,20 +446,20 @@ public class DtmfService {
                 bestResult = result;
                 bestQuality = q;
                 usedDuration = duration;
+                bestMode = getModeName(durationMs);
 
                 // 判断是否足够可靠可以停止
                 if (q.snr >= RELIABLE_SNR && q.peakRatio >= RELIABLE_PEAK_RATIO) {
                     // 信号质量足够好，可以提前返回
-                    bestMode = getModeName(durationMs);
                     break;
                 }
             }
 
-            // 记录当前尝试的模式
-            bestMode = getModeName(durationMs);
-
             // 如果已经到最长窗口，无论如何都返回结果
             if (durationMs == PROBE_DURATIONS_MS[PROBE_DURATIONS_MS.length - 1]) {
+                if (bestMode.equals("Unknown") && result == null) {
+                    bestMode = getModeName(durationMs);
+                }
                 break;
             }
 
@@ -593,6 +598,8 @@ public class DtmfService {
         }
         res.put("waveformSample", waveformSample);
 
+        // 返回 Goertzel 能量分布 (用于前端频谱显示)
+
         // 返回能量数组 (按频率顺序: 697, 770, 852, 941, 1209, 1336, 1477, 1633)
         double[] energyArray = new double[8];
         for (int i = 0; i < LOW_FREQS.length; i++) {
@@ -700,27 +707,27 @@ public class DtmfService {
         }
 
         Path audioDir = Paths.get(projectRoot, "audio", sessionName);
-        try {
-            Files.createDirectories(audioDir);
-            currentSessionFolder = audioDir.toString();
-            keyPressIndex = 0;
+        // Note: Do not create directory yet. We prefer lazy creation on first key press
+        // to avoid empty folders for sessions with no activity.
+        currentSessionFolder = audioDir.toString();
+        keyPressIndex = 0;
 
-            Map<String, Object> result = new HashMap<>();
-            result.put("success", true);
-            result.put("sessionName", sessionName);
-            result.put("sessionPath", currentSessionFolder);
-            result.put("message", "会话已创建: " + sessionName);
-            return result;
-        } catch (IOException e) {
-            Map<String, Object> result = new HashMap<>();
-            result.put("success", false);
-            result.put("error", e.getMessage());
-            return result;
-        }
+        // Clear last hardware events to prevent false triggers on startup
+        this.lastKey = null;
+        this.lastResult = null;
+        this.lastKeyTime = 0;
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("sessionName", sessionName);
+        result.put("sessionPath", currentSessionFolder);
+        result.put("message", "会话已就绪: " + sessionName);
+        return result;
     }
 
     // 按键并保存音频
-    public Map<String, Object> pressKeyAndSave(char key, double duration, Double snrDb, String noiseTypeStr) {
+    public Map<String, Object> pressKeyAndSave(char key, double duration, Double snrDb, String noiseTypeStr,
+            String source, double[] fpgaWaveform) {
         if (currentSessionFolder == null) {
             Map<String, Object> result = new HashMap<>();
             result.put("success", false);
@@ -728,14 +735,27 @@ public class DtmfService {
             return result;
         }
 
-        NoiseType noiseType = noiseTypeStr != null ? NoiseType.valueOf(noiseTypeStr.toUpperCase()) : NoiseType.GAUSSIAN;
-        double[] signal = generateDtmf(key, duration, snrDb, noiseType);
+        double[] signal;
+        boolean isFromFpga = fpgaWaveform != null && fpgaWaveform.length > 0;
+
+        if (isFromFpga) {
+            // Use actual FPGA waveform (contains real PWM noise)
+            signal = fpgaWaveform;
+        } else {
+            // Generate synthetic signal with noise
+            NoiseType noiseType = noiseTypeStr != null ? NoiseType.valueOf(noiseTypeStr.toUpperCase())
+                    : NoiseType.GAUSSIAN;
+            signal = generateDtmf(key, duration, snrDb, noiseType);
+        }
 
         keyPressIndex++;
         String filename = String.format("%02d_%c.wav", keyPressIndex, key);
         Path filepath = Paths.get(currentSessionFolder, filename);
 
         try {
+            // Lazy creation: Ensure directory exists before saving
+            Files.createDirectories(Paths.get(currentSessionFolder));
+
             saveAsWav(signal, filepath.toString());
 
             Map<String, Object> result = new HashMap<>();
@@ -754,12 +774,24 @@ public class DtmfService {
             result.put("mode", adaptiveResult.get("mode")); // 使用的算法模式
             result.put("signalDuration", adaptiveResult.get("signalDuration")); // 实际使用的信号时长
             result.put("snrEstimate", adaptiveResult.get("snrEstimate")); // 估算的 SNR
+            result.put("energies", adaptiveResult.get("energies")); // 频谱能量
+            result.put("waveformSample", adaptiveResult.get("waveformSample")); // 波形采样
 
             // 返回加噪波形用于前端播放
             int sampleCount = Math.min(signal.length, 4000);
             double[] noisyWaveform = new double[sampleCount];
             System.arraycopy(signal, 0, noisyWaveform, 0, sampleCount);
             result.put("noisyWaveform", noisyWaveform);
+
+            // Update memory state for polling ONLY if source is NOT 'web'
+            // This prevents the web client from detecting its own key presses as "new
+            // hardware events"
+            if (source == null || !source.equalsIgnoreCase("web")) {
+                this.lastKey = key;
+                this.lastKeyTime = System.currentTimeMillis();
+                this.lastResult = new HashMap<>(result);
+                this.lastResult.remove("noisyWaveform"); // removing heavy data
+            }
 
             return result;
         } catch (IOException e) {
@@ -783,10 +815,25 @@ public class DtmfService {
         result.put("success", true);
         result.put("sessionPath", currentSessionFolder);
         result.put("totalKeys", keyPressIndex);
-
         currentSessionFolder = null;
         keyPressIndex = 0;
 
+        return result;
+    }
+
+    // Get last key press (for polling)
+    public Map<String, Object> getLastKey(long sinceTime) {
+        Map<String, Object> result = new HashMap<>();
+        if (lastKey != null && lastKeyTime > sinceTime) {
+            result.put("hasNew", true);
+            result.put("key", lastKey);
+            result.put("time", lastKeyTime);
+            if (lastResult != null) {
+                result.putAll(lastResult);
+            }
+        } else {
+            result.put("hasNew", false);
+        }
         return result;
     }
 
@@ -925,16 +972,17 @@ public class DtmfService {
                         // Use adaptive detection
                         detectResult = adaptiveDetect(signal);
                         mode = (String) detectResult.get("mode");
-                    } else if (fixedDuration > 0 && fixedDuration < (double) signal.length / FS) {
-                        // Truncate signal to specified duration
-                        double[] truncatedSignal = truncate(signal, fixedDuration);
-                        int durationMs = (int) (fixedDuration * 1000);
+                    } else if (fixedDuration > 0) {
+                        // Use specified fixed duration (cap to signal length if needed)
+                        double effectiveDuration = Math.min(fixedDuration, (double) signal.length / FS);
+                        double[] truncatedSignal = truncate(signal, effectiveDuration);
+                        int durationMs = (int) (effectiveDuration * 1000);
                         mode = "Fixed(" + durationMs + "ms)";
                         detectResult = buildResult(truncatedSignal, mode, estimateQuality(truncatedSignal));
                     } else {
-                        // Use full signal (Deep mode)
+                        // Use full signal (Deep mode) - only when no duration specified
                         mode = "Deep(Full)";
-                        detectResult = buildResult(signal, mode, new QualityResult());
+                        detectResult = buildResult(signal, mode, estimateQuality(signal));
                     }
 
                     // 计算处理耗时（毫秒）
@@ -951,6 +999,10 @@ public class DtmfService {
                     fileResult.put("snrEstimate", detectResult.get("snrEstimate"));
                     fileResult.put("signalDuration", detectResult.get("signalDuration")); // 自适应算法使用的信号时长(ms)
                     fileResult.put("processTimeMs", Math.round(processTimeMs * 100) / 100.0); // 保留2位小数
+
+                    // Add visualization data (energies and waveform)
+                    fileResult.put("energies", detectResult.get("energies"));
+                    fileResult.put("waveformSample", detectResult.get("waveformSample")); // 确保包含波形数据
 
                     // 从文件名提取原始按键 (格式: 01_5.wav)
                     String fname = wavFile.getFileName().toString();

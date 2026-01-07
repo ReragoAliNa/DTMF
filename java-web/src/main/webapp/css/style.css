@@ -7,8 +7,9 @@
     --text-sub: #888888;
     --accent-color: #ffffff;
     --border-color: rgba(255, 255, 255, 0.15);
-    
-    --font-heading: 'Cinzel', serif; /* Elegant, cinematic header font */
+
+    --font-heading: 'Cinzel', serif;
+    /* Elegant, cinematic header font */
     --font-body: 'Raleway', 'Noto Sans JP', sans-serif;
 }
 
@@ -24,7 +25,8 @@ body {
     font-family: var(--font-body);
     height: 100vh;
     width: 100vw;
-    overflow: hidden; /* Fixed app-like feeling */
+    overflow: hidden;
+    /* Fixed app-like feeling */
 }
 
 /* Layout Architecture */
@@ -42,10 +44,11 @@ body {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     padding: 2rem;
+    padding-top: 1rem;
     /* Soft faint grid background for "Tech" feel */
-    background-image: 
+    background-image:
         linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 50px 50px;
@@ -60,12 +63,14 @@ body {
     flex-direction: column;
     padding: 3rem 2rem;
     overflow-y: auto;
-    box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
     z-index: 10;
 }
 
 /* Typography & Aesthetic */
-h1, h2, h3 {
+h1,
+h2,
+h3 {
     font-family: var(--font-heading);
     font-weight: 400;
     letter-spacing: 0.05em;
@@ -115,9 +120,11 @@ h1, h2, h3 {
     justify-content: space-between;
 }
 
-.nav-link:hover, .nav-link.active {
+.nav-link:hover,
+.nav-link.active {
     color: var(--text-main);
-    padding-left: 10px; /* Slide effect */
+    padding-left: 10px;
+    /* Slide effect */
 }
 
 .nav-link.active::before {
@@ -139,21 +146,25 @@ label {
 }
 
 /* Minimalist Inputs */
-select, input, .input-mock {
+select,
+input,
+.input-mock {
     width: 100%;
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border-color);
     padding: 0.8rem;
     color: white;
     font-family: var(--font-body);
     font-size: 1rem;
     transition: 0.3s;
-    border-radius: 0; /* Sharp edges */
+    border-radius: 0;
+    /* Sharp edges */
 }
 
-select:focus, input:focus {
+select:focus,
+input:focus {
     border-color: var(--text-main);
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
     outline: none;
 }
 
@@ -162,7 +173,8 @@ select:focus, input:focus {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 1px;
-    background: var(--border-color); /* Creates borders via gap */
+    background: var(--border-color);
+    /* Creates borders via gap */
     border: 1px solid var(--border-color);
 }
 
@@ -177,7 +189,7 @@ select:focus, input:focus {
 }
 
 .numpad-key:hover {
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
     color: white;
 }
 
@@ -212,7 +224,7 @@ select:focus, input:focus {
     margin-top: 1rem;
     padding: 1rem;
     border: 1px solid var(--border-color);
-    background: rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.3);
 }
 
 .result-row {
@@ -230,13 +242,14 @@ select:focus, input:focus {
 
 /* Charts Containers in Visual Stage */
 .chart-card {
-    background: rgba(0,0,0,0.4);
+    background: rgba(0, 0, 0, 0.4);
     border: 1px solid var(--border-color);
     padding: 1rem;
     margin-bottom: 2rem;
     width: 100%;
     max-width: 900px;
-    height: 350px; /* Fixed height for charts */
+    height: 350px;
+    /* Fixed height for charts */
     position: relative;
 }
 
@@ -254,18 +267,24 @@ select:focus, input:focus {
 /* Mobile Responsive */
 @media (max-width: 900px) {
     .split-layout {
-        flex-direction: column-reverse; /* Controls on bottom for mobile access, or adjust as needed */
-        overflow-y: auto; /* Allow full page scroll */
+        flex-direction: column-reverse;
+        /* Controls on bottom for mobile access, or adjust as needed */
+        overflow-y: auto;
+        /* Allow full page scroll */
     }
-    .visual-stage, .control-sidebar {
+
+    .visual-stage,
+    .control-sidebar {
         width: 100%;
         height: auto;
         overflow: visible;
         flex: none;
     }
+
     .control-sidebar {
         padding: 1.5rem;
     }
+
     .visual-stage {
         min-height: 50vh;
     }
