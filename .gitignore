@@ -1,4 +1,10 @@
+# =========================================
+# DTMF Project .gitignore
+# =========================================
+
+# -----------------------------------------
 # Java / Maven
+# -----------------------------------------
 target/
 *.class
 *.jar
@@ -7,11 +13,13 @@ target/
 *.zip
 *.tar.gz
 *.rar
-mvnw
-mvnw.cmd
-.mvn/
 
-# IDEs
+# Maven Wrapper (keep maven-wrapper.jar if needed)
+.mvn/wrapper/maven-wrapper.jar
+
+# -----------------------------------------
+# IDE / Editor
+# -----------------------------------------
 .idea/
 *.iml
 .vscode/
@@ -19,8 +27,13 @@ mvnw.cmd
 .classpath
 .project
 .factorypath
+*.swp
+*.swo
+*~
 
+# -----------------------------------------
 # Python
+# -----------------------------------------
 __pycache__/
 *.py[cod]
 *$py.class
@@ -43,15 +56,20 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# Virtual Environment
 .env
-.venv
+.venv/
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
 
-# LaTeX
+# -----------------------------------------
+# LaTeX Build Artifacts
+# -----------------------------------------
+docs/build/
 docs/texCache/
 *.aux
 *.log
@@ -65,10 +83,58 @@ docs/texCache/
 *.thm
 *.lof
 *.lot
-# Keep the final report PDF if it's in the docs root
+*.nav
+*.snm
+*.vrb
+
+# Keep the final PDF report
 !docs/dtmf_report.pdf
 
-# OS
+# -----------------------------------------
+# FPGA / VHDL Simulation
+# -----------------------------------------
+# GHDL output files
+*.ghw
+*.cf
+*.o
+
+# Simulation build directory
+sim_build/
+
+# Xilinx ISE project files
+*.xise
+*.gise
+*.bgn
+*.bit
+*.bin
+*.mcs
+*.csv
+*.drc
+*.lso
+*.map
+*.mrp
+*.ncd
+*.ngc
+*.ngd
+*.ngr
+*.pad
+*.par
+*.ptwx
+*.syr
+*.twr
+*.twx
+*.unroutes
+*.xpi
+*.xwbt
+_ngo/
+iseconfig/
+xlnx_auto_0_xdb/
+xst/
+_xmsgs/
+
+# -----------------------------------------
+# Operating System
+# -----------------------------------------
 .DS_Store
 .DS_Store?
 ._*
@@ -76,10 +142,34 @@ docs/texCache/
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# Audio / Data (Large files)
-audio/
-datasets/
-!datasets/esc50/
-*.ghw
-sim_build/
+# -----------------------------------------
+# Audio & Data Files (Large)
+# -----------------------------------------
+# Exclude recorded audio sessions (can be large)
+audio/call_*/
+
+# Keep ESC-50 dataset README but exclude audio files
+datasets/esc50/audio/
+
+# -----------------------------------------
+# Logs & Temporary Files
+# -----------------------------------------
+*.log
+logs/
+tmp/
+temp/
+
+# -----------------------------------------
+# Spring Boot
+# -----------------------------------------
+java-web/logs/
+java-web/*.log
+
+# -----------------------------------------
+# Node.js (if any frontend tooling)
+# -----------------------------------------
+node_modules/
+npm-debug.log
+yarn-error.log
